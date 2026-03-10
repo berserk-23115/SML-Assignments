@@ -29,8 +29,8 @@ def sample_data(images, labels, sample_size=100):
     p = np.random.permutation(len(y))
     X = X[p]
     y = y[p]
+    
     return X, y
-
 
 def load_dataset(image_file, label_file):
     with open(label_file, 'rb') as f:
@@ -40,7 +40,6 @@ def load_dataset(image_file, label_file):
         magic, num, rows, cols = struct.unpack(">IIII", f.read(16))
         images = np.frombuffer(f.read(), dtype=np.uint8).reshape(num, rows, cols)
     return images, labels
-    
 
 def filter012(images, labels):
     classes=(0, 1, 2)
@@ -55,127 +54,124 @@ def preprocess(images):
     return norm_images
 
 def principalComponent(train_images, var, comp=None):
-    print("Size of Data Matrix", train_images.shape)
-    data_mu = np.mean(train_images, axis=1,keepdims=True)
+    data_mu = np.mean(train_images, axis=1, keepdims=True)
     corrected_data_matrix = train_images - data_mu
-    cov_S = np.dot(corrected_data_matrix, corrected_data_matrix.T)
-    cov_S = (1/299)* cov_S
-
-    eigVals, vec = np.linalg.eig(cov_S)
-    eigVals = np.real(eigVals)
-    vec = np.real(vec)
-
-    sorted_idx = np.argsort(eigVals)
-    sorted_idx = sorted_idx[::-1]
+    cov_S = np.dot(corrected_data_matrix, corrected_data_matrix.T) / 299
+    eigVals, vec = np.linalg.eigh(cov_S)
+    sorted_idx = np.argsort(eigVals)[::-1]
     eigVals = eigVals[sorted_idx]
     vec = vec[:, sorted_idx]
 
-    if(comp is not None):
+    if comp is not None:
         k = comp
-    elif(var is not None):
+    elif var is not None:
         total_var = np.sum(eigVals)
         var_sum = 0
         k = 0
         for i in range(len(eigVals)):
             var_sum += eigVals[i]
             if (var_sum / total_var) >= var:
-                k = i + 1  # We need i+1 components because index i is the (i+1)th component
+                k = i + 1 
                 break
     else:
         k = train_images.shape[0]
     Up = vec[:, :k]
     Y = np.dot(Up.T, corrected_data_matrix)
     return Y, Up, eigVals[:k]
-    
-    
+
 def fischerDA(train_images, train_labels):
     feat_cnt = train_images.shape[0]
-    cats = [0,1,2]
+    cats = np.unique(train_labels)
     mu_glob = np.mean(train_images, axis=1, keepdims=True)
     S_w = np.zeros((feat_cnt, feat_cnt))
     S_bw = np.zeros((feat_cnt, feat_cnt))
-    for idx in cats:
-        samples=train_images[:, train_labels == idx]
-        mu_c= np.mean(samples, axis=1, keepdims=True)
-        centered =  samples - mu_c
-        S_w+=(centered @ centered.T)
-        mu_diff=mu_c-mu_glob
-        n_c=samples.shape[1]
-        S_bw+=n_c * (mu_diff @ mu_diff.T)
-
-    S_w += np.eye(feat_cnt) * 1e-6 #(sig+ l*I) to ensure invertibility
-    mat = np.linalg.inv(S_w) @ S_bw
+    for c in cats:
+        samples = train_images[:, train_labels == c]
+        mu_c = np.mean(samples, axis=1, keepdims=True)
+        centered = samples - mu_c
+        S_w += (centered @ centered.T)
+        mu_diff = mu_c - mu_glob
+        n_c = samples.shape[1]
+        S_bw += n_c * (mu_diff @ mu_diff.T)
+    S_w += np.eye(feat_cnt) * 1e-6 
+    mat = np.linalg.pinv(S_w) @ S_bw
+    
     eigVals, vec = np.linalg.eig(mat)
-    idx_desc = np.argsort(eigVals)[::-1]
+    idx_desc = np.argsort(np.real(eigVals))[::-1]
     top_idx = idx_desc[:len(cats) - 1]
-    W = vec[:, top_idx]
-    return np.real(W)
+    W = np.real(vec[:, top_idx])
+    return W
 
-
-def project_pca(data, Up, mean):
-    return Up.T @ (data.T - mean)
+def accuracy(pred, labels):
+    num_sample = len(pred)
+    correct = np.sum(pred == labels)
+    return (correct / num_sample)*100
 
 def project_test_pca(X_test_t, Up, train_mean):
     centered_test = X_test_t - train_mean
     return np.dot(Up.T, centered_test)
 
-def MLEstimate(train_images, train_labels):
+def mleEstimate(train_images, train_labels):
     reg = 1e-5
     classes = np.unique(train_labels)
     params={}
     for c in classes:
         class_images = train_images[train_labels == c]
         N = class_images.shape[0]
-        mean = np.mean(class_images, axis=0) 
-        print(mean.shape)      ## u
-        centered_images = class_images - mean ## (x-u)
-        covmat = np.dot(centered_images.T, centered_images) / N  ## 1/N (x-u)^t (x-u)
-        covmat += reg * np.eye(covmat.shape[0]) ## Regularization
-        prior = N / len(train_labels) ## P(y=c) = N_c/N
+        mean = np.mean(class_images, axis=0)
+        centered_images = class_images - mean
+        covmat = np.dot(centered_images.T, centered_images) / N
+        covmat += reg * np.eye(covmat.shape[0])
+        prior = N / len(train_labels)
         params[c] = (mean, covmat, prior)
     return params
 
-def LDA(test_images, test_labels, params):
-    labels = list(params.keys())
-    cov = np.zeros_like(params[labels[0]][1])
-    for c in labels:
+def LDA(test_images, test_labels, params, dataset_name="Test"):
+    categories = list(params.keys())
+    cov = np.zeros_like(params[categories[0]][1])
+    for c in categories:
         cov += params[c][1]
-    N_label = len(labels)
-    cov = cov / N_label
+    cov /= len(categories)
     cov_inv = np.linalg.pinv(cov)
     pred_labels = []
-    for x in test_images:
+    first_scores = None
+    for i, x in enumerate(test_images):
         scores = []
-        for c in labels:
-            mu = params[c][0]
+        for c in categories:
+            mean = params[c][0]
             prior = params[c][2]
-            score = -0.5 * np.dot(np.dot((x-mu).T, cov_inv), (x-mu)) + np.log(prior)
+            score = -0.5 * np.dot(np.dot((x - mean).T, cov_inv), (x - mean)) + np.log(prior)
             scores.append(score)
-        pred_labels.append(labels[np.argmax(scores)])
+        if i == 0:
+            first_scores = scores
+        pred_labels.append(categories[np.argmax(scores)])
 
     pred_labels = np.array(pred_labels)
-    accuracy = np.mean(pred_labels == test_labels)
-    print("LDA Discriminant values for first test sample:", 
-          [f"Class {c}: {s:.2f}" for c, s in zip(labels, scores)])
-    print(f"LDA Accuracy: {accuracy:.4f}")
-    
+    acc = np.mean(pred_labels == test_labels) * 100
+    print(f"LDA Discriminant values for first {dataset_name.lower()} sample:", 
+          [f"Class {c}: {s:.2f}" for c, s in zip(categories, first_scores)])
+    print(f"LDA {dataset_name} Accuracy: {acc:.2f}%")
+    return pred_labels, acc
 
-def QDA(test_images, test_labels, params):
+def QDA(test_images, test_labels, params, dataset_name="Test"):
     labels = list(params.keys())
     pred_labels = []
     cat_params = {}
+    
     for idx in labels:
         covmat = params[idx][1]
         try:
-            cov_inv = np.linalg.inv(covmat)
             sign, logdet = np.linalg.slogdet(covmat)
             if (sign <= 0):
-                print(f"Warning: Covariance matrix for class {c} is not positive definite.")
-        except np.linalg.LinAlgError: # Singular matrix, use pseudo-inverse
+                print(f"Covariance matrix for class {idx} is not positive definite.")
+            cov_inv = np.linalg.inv(covmat)
+        except np.linalg.LinAlgError: 
             cov_inv = np.linalg.pinv(covmat)
             logdet = 0
         cat_params[idx] = (cov_inv, logdet)
-    for x in test_images:
+    first_scores = None
+    
+    for i, x in enumerate(test_images):
         scores = []
         for c in labels:
             mu = params[c][0]
@@ -183,13 +179,16 @@ def QDA(test_images, test_labels, params):
             cov_inv, logdet = cat_params[c]
             score = -0.5 * np.dot(np.dot((x - mu).T, cov_inv), (x - mu)) - 0.5 * logdet + np.log(prior)
             scores.append(score)
+        if i == 0:
+            first_scores = scores
         pred_labels.append(labels[np.argmax(scores)])
 
     pred_labels = np.array(pred_labels)
-    accuracy = np.mean(pred_labels == test_labels)
-    print("QDA Discriminant values for first test sample:", 
-          [f"Class {c}: {s:.2f}" for c, s in zip(labels, scores)])
-    print(f"QDA Accuracy: {accuracy:.4f}")
+    acc = np.mean(pred_labels == test_labels) * 100
+    print(f"QDA Discriminant values for first {dataset_name.lower()} sample:", 
+          [f"Class {c}: {s:.2f}" for c, s in zip(labels, first_scores)])
+    print(f"QDA {dataset_name} Accuracy: {acc:.2f}%")
+    return pred_labels, acc
 
 train_imgs_raw, train_labels_raw = load_dataset(train_images_fpath, train_labels_fpath)
 test_imgs_raw, test_labels_raw = load_dataset(test_images_fpath, test_labels_fpath)
@@ -207,6 +206,7 @@ X_test_t = X_test_norm.T
 print("Train shape (features, samples):", X_train_t.shape)
 print("Test shape (features, samples):", X_test_t.shape)
 
+# 1. Project and Reconstruct
 Y_t_75, Up_75, _ = principalComponent(X_train_t, var=0.75)
 mean_train = np.mean(X_train_t, axis=1, keepdims=True)
 X_recon = (Up_75 @ Y_t_75) + mean_train
@@ -224,47 +224,51 @@ for i in range(5):
 plt.tight_layout()
 plt.show()
 
+# Apply FDA and evaluate with LDA/QDA
 fda_vec = fischerDA(X_train_t, y_train)
 X_train_fda = np.dot(X_train_norm, fda_vec) 
 X_test_fda = np.dot(X_test_norm, fda_vec)
-params_fda = MLEstimate(X_train_fda, y_train)
+params_fda = mleEstimate(X_train_fda, y_train)
 
-print("FDA with LDA\n")
-print("Train Accuracy:")
-LDA(X_train_fda, y_train, params_fda)
-print("Test Accuracy:")
-LDA(X_test_fda, y_test, params_fda)
+
+print("FDA with LDA")
+LDA(X_train_fda, y_train, params_fda, dataset_name="Train")
+print()
+LDA(X_test_fda, y_test, params_fda, dataset_name="Test")
 
 print()
 
-print("FDA with QDA\n")
-print("Train Accuracy:")
-QDA(X_train_fda, y_train, params_fda)
-print("Test Accuracy:")
-QDA(X_test_fda, y_test, params_fda)
+print("FDA with QDA")
+QDA(X_train_fda, y_train, params_fda, dataset_name="Train")
+print()
+QDA(X_test_fda, y_test, params_fda, dataset_name="Test")
 
-print(" PCA 75% Variance + LDA")
+print("PCA 75% Variance + LDA")
 Y_test_75 = project_test_pca(X_test_t, Up_75, mean_train)
+p_var75 = mleEstimate(Y_t_75.T, y_train)
+LDA(Y_t_75.T, y_train, p_var75, dataset_name="Train")
+print()
+LDA(Y_test_75.T, y_test, p_var75, dataset_name="Test")
 
-p_var75 = MLEstimate(Y_t_75.T, y_train)
-print("Train Accuracy:"); LDA(Y_t_75.T, y_train, p_var75)
-print("Test Accuracy:"); LDA(Y_test_75.T, y_test, p_var75)
+print()
 
-print("\n")
 print("PCA 90% Variance + LDA")
 Y_train_90, Up_90, _ = principalComponent(X_train_t, var=0.90, comp=None)
 Y_test_90 = project_test_pca(X_test_t, Up_90, mean_train)
-p_var90 = MLEstimate(Y_train_90.T, y_train)
-print("Train Accuracy:"); LDA(Y_train_90.T, y_train, p_var90)
-print("Test Accuracy:"); LDA(Y_test_90.T, y_test, p_var90)
+p_var90 = mleEstimate(Y_train_90.T, y_train)
+LDA(Y_train_90.T, y_train, p_var90, dataset_name="Train")
+print()
+LDA(Y_test_90.T, y_test, p_var90, dataset_name="Test")
 
-print("\n")
+print()
+
 print("PCA First 2 Components + LDA")
 Y_train_2, Up_2, _ = principalComponent(X_train_t, var=None, comp=2)
 Y_test_2 = project_test_pca(X_test_t, Up_2, mean_train)
-p_var2 = MLEstimate(Y_train_2.T, y_train)
-print("Train Accuracy:"); LDA(Y_train_2.T, y_train, p_var2)
-print("Test Accuracy:"); LDA(Y_test_2.T, y_test, p_var2)
+p_var2 = mleEstimate(Y_train_2.T, y_train)
+LDA(Y_train_2.T, y_train, p_var2, dataset_name="Train")
+print()
+LDA(Y_test_2.T, y_test, p_var2, dataset_name="Test")
 
 fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 targets = [(X_train_fda, "FDA Projection"), (Y_train_2.T, "PCA (Top 2) Projection")]
@@ -276,7 +280,6 @@ for ax, (data, title) in zip(axes, targets):
         ax.scatter(data[mask, 0], data[mask, 1], c=colors[i], marker=markers[i], label=f"Digit {c}", alpha=0.6)
     ax.set_title(title)
     ax.legend()
-
 plt.tight_layout()
 plt.show()
 
