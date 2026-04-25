@@ -139,7 +139,6 @@ def main():
     print("Minimum SSR on train set:", sm['ssr'])
     print("Test MSE:", smse)
 
-
     rng = np.random.default_rng(2023115)
     boots = samplesBootStrap(Xtr, ytr.astype(float), 5, rng)
     bag_mdls, oob_errs = [], []
