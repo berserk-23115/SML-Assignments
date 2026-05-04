@@ -23,7 +23,6 @@ def principalComponent(X, var=None, comp=None):
                 break
     else:
         k = X.shape[0]
-    
     Up = V[:, :k]
     Y = np.dot(Up.T, Xc)
     return Y, Up, ev[:k]
@@ -38,7 +37,6 @@ def wtError(yl, yr, dl, dr):
     b = np.sum(dl[yl==-1])
     a_u = np.sum(dr[yr==1])
     b_u = np.sum(dr[yr==-1])
-
     if (a >= b):
         lpred = 1
     else:
@@ -50,7 +48,6 @@ def wtError(yl, yr, dl, dr):
     left_error = np.sum(dl[yl!=lpred])
     right_error = np.sum(dr[yr!=rpred])
     tot_error = left_error+right_error
-    
     return tot_error, lpred, rpred
 
 
@@ -58,7 +55,6 @@ def train_stump(X, y, D):
     bf, bt = None, None
     best_error = np.inf
     blp, brp = None, None
-    
     for fi in range(X.shape[1]):
         xs = X[:, fi]
         si = np.argsort(xs)
@@ -85,13 +81,12 @@ def predict_stump(stump, X):
 def adaboost_stumps(X_train, y_train, X_val, y_val, X_test, y_test):
     n_stumps=300
     n_samples = X_train.shape[0]
-    D = np.ones(n_samples) / n_samples
+    D = np.ones(n_samples)/n_samples
     stumps = []
     alphas = []
     train_acc = []
     val_acc = []
     test_acc = []
-    
     best_val_acc = -np.inf
     best_iter = 0
     
@@ -100,23 +95,18 @@ def adaboost_stumps(X_train, y_train, X_val, y_val, X_test, y_test):
         stump = train_stump(X_train, y_train, D)
         stumps.append(stump)
         epsilon_t = stump['error']
-        if (epsilon_t >= 0.5 or epsilon_t <= 0):
-            print(f"Warning: Invalid error rate {epsilon_t:.6f} at iteration {t}, stopping.")
-            break
-        alpha_t = 0.5 * np.log((1-epsilon_t)/epsilon_t)
+        alpha_t = 0.5*np.log((1-epsilon_t)/epsilon_t)
         alphas.append(alpha_t)
-
         h_t = predict_stump(stump, X_train)
-        D = D*np.exp(-alpha_t * y_train * h_t)
+        D = D*np.exp(-alpha_t*y_train*h_t)
         D = D/np.sum(D)
-
         train_pred = predict(stumps, alphas, X_train)
         val_pred = predict(stumps, alphas, X_val)
         test_pred = predict(stumps, alphas, X_test)
         
-        acc_train = np.mean(train_pred == y_train)
-        acc_val = np.mean(val_pred == y_val)
-        acc_test = np.mean(test_pred == y_test)
+        acc_train = np.mean(train_pred==y_train)
+        acc_val = np.mean(val_pred==y_val)
+        acc_test = np.mean(test_pred==y_test)
         
         train_acc.append(acc_train)
         val_acc.append(acc_val)
@@ -124,12 +114,11 @@ def adaboost_stumps(X_train, y_train, X_val, y_val, X_test, y_test):
         if (acc_val > best_val_acc):
             best_val_acc = acc_val
             best_iter = t
-        
         if ((t + 1)%50==0):
             print(f"{t+1} {acc_train} {acc_val} {acc_test} {alpha_t} {epsilon_t}")
     
     best_test_acc = test_acc[best_iter]
-    print("-" * 70)
+    print("\n")
     print(f"Best iteration: {best_iter + 1}")
     print(f"Best validation accuracy: {best_val_acc:.6f}")
     print(f"Test accuracy at best iteration: {best_test_acc:.6f}")
@@ -152,9 +141,8 @@ y_train_all = dataset['y_train']
 x_test_all = dataset['x_test']
 y_test_all = dataset['y_test']
 
-
-train_mask = (y_train_all == 4) | (y_train_all == 9)
-test_mask = (y_test_all == 4) | (y_test_all == 9)
+train_mask = (y_train_all==4) | (y_train_all==9)
+test_mask = (y_test_all==4) | (y_test_all==9)
 
 x_train_49 = x_train_all[train_mask]
 y_train_49 = y_train_all[train_mask]
@@ -181,7 +169,6 @@ print(f"Train: {x_train.shape}, Val: {x_val.shape}, Test: {x_test.shape}")
 x_train_flat = x_train.reshape(x_train.shape[0], -1).T.astype(np.float64)
 x_val_flat = x_val.reshape(x_val.shape[0], -1).T.astype(np.float64)
 x_test_flat = x_test.reshape(x_test.shape[0], -1).T.astype(np.float64)
-
 
 print("\nApplying PCA dimension reduction (5 components)...")
 Y_train, pca_basis, ev = principalComponent(x_train_flat, comp=5)

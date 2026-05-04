@@ -129,7 +129,6 @@ def predict_ensemble(stumps, X, eta):
     return F
 
 
-
 dataset = np.load('mnist.npz')
 x_tr_gb = dataset['x_train']
 y_tr_lab = dataset['y_train']
