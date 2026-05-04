@@ -185,8 +185,7 @@ print(f"Test labels: {np.unique(y_test)}")
 
 print("Training AdaBoost with Decision Stumps (300 trees)")
 stumps, alphas, train_acc, val_acc, test_acc, best_iter, best_test_acc = adaboost_stumps(
-    Y_train, y_train, Y_val, y_val, Y_test, y_test, n_stumps=300
-)
+    Y_train, y_train, Y_val, y_val, Y_test, y_test)
 
 print(f"Number of stumps grown: {len(stumps)}")
 print(f"Best iteration (highest validation accuracy): {best_iter + 1}")
@@ -198,13 +197,12 @@ print(f"Val:{val_acc[best_iter]:.6f}")
 print(f"Test:{test_acc[best_iter]:.6f}")
 
 plt.figure(figsize=(12, 7))
-plt.plot(range(1, len(val_acc)+1), val_acc, 'b-', label='Validation Accuracy',linewidth=2.5, alpha=0.8)
-plt.plot(range(1, len(test_acc)+1), test_acc, 'r-', label='Test Accuracy',linewidth=2.5, alpha=0.8)
-plt.axvline(x=best_iter + 1, color='g', linestyle='--', linewidth=2,label=f'Best Iteration ({best_iter + 1})')
+plt.plot(range(1, len(val_acc) + 1), val_acc, 'b-', label='Validation Accuracy', linewidth=2.5, alpha=0.8)
+plt.axvline(x=best_iter + 1, color='g', linestyle='--', linewidth=2, label=f'Best Iteration ({best_iter + 1})')
 
 plt.xlabel('Number of Trees', fontsize=13, fontweight='bold')
 plt.ylabel('Accuracy', fontsize=13, fontweight='bold')
-plt.title('AdaBoost: Validation & Test Accuracy vs Number of Trees',fontsize=14, fontweight='bold')
+plt.title('AdaBoost: Validation Accuracy vs Number of Trees', fontsize=14, fontweight='bold')
 plt.legend(fontsize=12, loc='lower right')
 plt.grid(True, alpha=0.3, linestyle='--')
 plt.ylim([0.85, 1.02])

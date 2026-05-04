@@ -218,7 +218,6 @@ for lr in learning_rates:
         'best_test_mse': best_test_mse_eta,
         'best_val_mse': val_mse_eta[best_iter_eta]
     }
-    
     print(f"Best iteration: {best_iter_eta + 1}")
     print(f"Best val MSE: {results[lr]['best_val_mse']:.6f}")
     print(f"Test MSE at best: {best_test_mse_eta:.6f}")
