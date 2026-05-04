@@ -32,7 +32,7 @@ def targ_encod(y, k):
     return np.where(y == k, 1, -1)
 
 def compute_ssr(yl, yr):
-    if (len(yl) == 0 or len(yr) == 0):
+    if(len(yl)==0 or len(yr)==0):
         return np.inf, None, None
     lm, rm = np.mean(yl), np.mean(yr)
     ssr = np.sum((yl - lm)**2) + np.sum((yr - rm)**2)
@@ -43,12 +43,12 @@ def train_stump(X, y, max_cands=1000):
     rng = np.random.default_rng(2023115)
     bf, bt, bssr, blv, brv = None, None, np.inf, None, None
     for fi in range(X.shape[1]):
-        xs = X[:, fi]
-        si = np.argsort(xs)
-        xs, ys = xs[si], y[si]
+        xs=X[:, fi]
+        si=np.argsort(xs)
+        xs,ys=xs[si],y[si]
         cand_indx = []
         for i in range(len(xs) - 1):
-            if xs[i] != xs[i + 1]:
+            if(xs[i] != xs[i+1]):
                 cand_indx.append(i)
 
         if len(cand_indx) > max_cands:
@@ -59,13 +59,12 @@ def train_stump(X, y, max_cands=1000):
             ssr, lv, rv = compute_ssr(ys[:i+1], ys[i+1:])
             if (ssr < bssr):
                 bssr, bf, bt, blv, brv = ssr, fi, thr, lv, rv
-    
     return {'feat': bf, 'thresh': bt, 'lval': blv,'rval': brv, 'ssr': bssr}
 
 
 def predict_stump(mdl, X):
     preds = np.zeros(X.shape[0])
-    lm = X[:, mdl['feat']] <= mdl['thresh']
+    lm = X[:, mdl['feat']]<=mdl['thresh']
     preds[lm] = mdl['lval']
     preds[~lm] = mdl['rval']
     return preds
@@ -80,7 +79,7 @@ def samplesBootStrap(X, y, n, rng):
         out.append((si, oob))
     return out
 
-def gradBoosting(X_train, y_train, X_val, y_val, X_test, y_test,eta=0.01):
+def trainer(X_train, y_train, X_val, y_val, X_test, y_test,eta=0.01):
     stumps = []
     n_stumps = 300
     F_train = np.zeros(X_train.shape[0])
@@ -156,11 +155,9 @@ y_val = y_tr_sort[val_idx]
 x_test = x_te_sort
 y_test = y_te_sort
 
-
 x_tr_flat = x_train.reshape(x_train.shape[0], -1).T.astype(np.float64)
 x_val_flat = x_val.reshape(x_val.shape[0], -1).T.astype(np.float64)
 x_test_flat = x_test.reshape(x_test.shape[0], -1).T.astype(np.float64)
-
 
 Y_train, pca_basis, ev = principalComponent(x_tr_flat, comp=5)
 mu_train = np.mean(x_tr_flat, axis=1, keepdims=True)
@@ -180,7 +177,7 @@ print(f"Train shape: {Y_train.shape}, Val shape: {Y_val.shape}, Test shape: {Y_t
 print(f"Train labels: {np.unique(y_train)}, Val labels: {np.unique(y_val)}, Test labels: {np.unique(y_test)}")
 
 print("Testing with LR = 0.01")
-stumps, train_mse, val_mse, test_mse, best_iter, best_test_mse = gradBoosting(
+stumps, train_mse, val_mse, test_mse, best_iter, best_test_mse = trainer(
     Y_train, y_train, Y_val, y_val, Y_test, y_test,
     eta=0.01)
 
@@ -198,7 +195,6 @@ plt.legend(fontsize=11)
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
 plt.savefig('validation_mse_eta001.png', dpi=150)
-print("\nPlot saved as 'validation_mse_eta001.png'")
 plt.show()
 
 
@@ -209,7 +205,9 @@ print("Testing multiple learning rates")
 for lr in learning_rates:
     print(f"\nTesting η = {lr}")
     obj = {}
-    stumps_eta, train_mse_eta, val_mse_eta, test_mse_eta, best_iter_eta, best_test_mse_eta = gradBoosting(Y_train, y_train, Y_val, y_val, Y_test, y_test,eta=lr)
+    stumps_eta, train_mse_eta, val_mse_eta, test_mse_eta, best_iter_eta, best_test_mse_eta = trainer(
+        Y_train, y_train, Y_val, y_val, Y_test, y_test,
+        eta=lr)
     
     results[lr] = {
         'stumps': stumps_eta,
@@ -228,7 +226,7 @@ for lr in learning_rates:
 
 print("SUMMARY TABLE")
 
-print(f"{'Learning Rate':<15} {'Best Iter':<12} {'Best Val MSE':<15} {'Test MSE':<15}")
+print(f"{'Learning Rate'} {'Best Iter'} {'Best Val MSE'} {'Test MSE'}")
 
 for eta in learning_rates:
     r = results[eta]
@@ -236,7 +234,7 @@ for eta in learning_rates:
     best_val_mse = r["best_val_mse"]
     best_test_mse = r["best_test_mse"]
     print(
-        f"{eta:<15} "
+        f"{eta} "
         f"{best_iter_num} "
         f"{best_val_mse} "
         f"{best_test_mse}"

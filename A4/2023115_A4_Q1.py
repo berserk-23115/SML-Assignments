@@ -27,10 +27,8 @@ def principalComponent(X, var=None, comp=None):
     Y = np.dot(Up.T, Xc)
     return Y, Up, ev[:k]
 
-
 def targ_encod(y, k):
     return np.where(y == k, 1, -1)
-
 
 def wtError(yl, yr, dl, dr):
     a = np.sum(dl[yl==1])
@@ -69,14 +67,12 @@ def train_stump(X, y, D):
     wErro = best_error / np.sum(D)
     return {'feat': bf,'thresh': bt,'lpred': blp,'rpred': brp,'error': wErro,'mclfs_count': best_error}
 
-
 def predict_stump(stump, X):
     preds = np.zeros(X.shape[0], dtype=int)
     lm = X[:, stump['feat']] <= stump['thresh']
     preds[lm] = stump['lpred']
     preds[~lm] = stump['rpred']
     return preds
-
 
 def adaboost_stumps(X_train, y_train, X_val, y_val, X_test, y_test):
     n_stumps=300
@@ -92,21 +88,21 @@ def adaboost_stumps(X_train, y_train, X_val, y_val, X_test, y_test):
     
     print(f"\n{'Iter'} {'Train Acc'} {'Val Acc'} {'Test Acc'} {'α_t'} {'Error'}")
     for t in range(n_stumps):
-        stump = train_stump(X_train, y_train, D)
+        stump=train_stump(X_train, y_train, D)
         stumps.append(stump)
-        epsilon_t = stump['error']
-        alpha_t = 0.5*np.log((1-epsilon_t)/epsilon_t)
+        epsilon_t=stump['error']
+        alpha_t=0.5*np.log((1-epsilon_t)/epsilon_t)
         alphas.append(alpha_t)
-        h_t = predict_stump(stump, X_train)
-        D = D*np.exp(-alpha_t*y_train*h_t)
-        D = D/np.sum(D)
-        train_pred = predict(stumps, alphas, X_train)
-        val_pred = predict(stumps, alphas, X_val)
-        test_pred = predict(stumps, alphas, X_test)
+        h_t=predict_stump(stump, X_train)
+        D=D*np.exp(-alpha_t*y_train*h_t)
+        D=D/np.sum(D)
+        train_pred=predict(stumps, alphas, X_train)
+        val_pred=predict(stumps, alphas, X_val)
+        test_pred=predict(stumps, alphas, X_test)
         
-        acc_train = np.mean(train_pred==y_train)
-        acc_val = np.mean(val_pred==y_val)
-        acc_test = np.mean(test_pred==y_test)
+        acc_train=np.mean(train_pred==y_train)
+        acc_val=np.mean(val_pred==y_val)
+        acc_test=np.mean(test_pred==y_test)
         
         train_acc.append(acc_train)
         val_acc.append(acc_val)
@@ -124,15 +120,13 @@ def adaboost_stumps(X_train, y_train, X_val, y_val, X_test, y_test):
     print(f"Test accuracy at best iteration: {best_test_acc:.6f}")
     return stumps, np.array(alphas), train_acc, val_acc, test_acc, best_iter, best_test_acc
 
-
 def predict(stumps, alphas, X):
     n_samples = X.shape[0]
     scores = np.zeros(n_samples)
     for stump, alpha in zip(stumps, alphas):
-        h = predict_stump(stump, X)
-        scores += alpha * h
+        h=predict_stump(stump, X)
+        scores+=alpha*h
     return np.sign(scores).astype(int)
-
 
 print("MNIST 4 vs 9 Classification with AdaBoost")
 dataset = np.load('mnist.npz')
@@ -165,14 +159,12 @@ y_test = y_test_49
 print(f"\nData shapes before preprocessing:")
 print(f"Train: {x_train.shape}, Val: {x_val.shape}, Test: {x_test.shape}")
 
-
 x_train_flat = x_train.reshape(x_train.shape[0], -1).T.astype(np.float64)
 x_val_flat = x_val.reshape(x_val.shape[0], -1).T.astype(np.float64)
 x_test_flat = x_test.reshape(x_test.shape[0], -1).T.astype(np.float64)
 
 print("\nApplying PCA dimension reduction (5 components)...")
 Y_train, pca_basis, ev = principalComponent(x_train_flat, comp=5)
-
 mu_train = np.mean(x_train_flat, axis=1, keepdims=True)
 
 Y_val = np.dot(pca_basis.T, x_val_flat - mu_train)
@@ -180,7 +172,6 @@ Y_test = np.dot(pca_basis.T, x_test_flat - mu_train)
 Y_train = Y_train.T
 Y_val = Y_val.T
 Y_test = Y_test.T
-
 
 y_train = targ_encod(y_train, 9)
 y_val = targ_encod(y_val, 9)
@@ -203,8 +194,8 @@ print(f"Best validation accuracy: {val_acc[best_iter]:.6f}")
 print(f"Test accuracy at best iteration: {best_test_acc:.6f}")
 print(f"\nFinal accuracies (at iteration {best_iter + 1}):")
 print(f"Train: {train_acc[best_iter]:.6f}")
-print(f"Val:   {val_acc[best_iter]:.6f}")
-print(f"Test:  {test_acc[best_iter]:.6f}")
+print(f"Val:{val_acc[best_iter]:.6f}")
+print(f"Test:{test_acc[best_iter]:.6f}")
 
 plt.figure(figsize=(12, 7))
 plt.plot(range(1, len(val_acc)+1), val_acc, 'b-', label='Validation Accuracy',linewidth=2.5, alpha=0.8)

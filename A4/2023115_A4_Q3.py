@@ -19,9 +19,6 @@ def split_data(X, y, test_size=0.3):
     train_idx = idxs[test_count:]
     return X[train_idx], X[test_idx], y[train_idx], y[test_idx]
 
-x_train_A, x_test_A, y_train_A, y_test_A = split_data(datasetA, labelsA, test_size=0.3)
-x_train_B, x_test_B, y_train_B, y_test_B = split_data(datasetB, labelsB, test_size=0.3)
-
 class Perceptron:
     def __init__(self, learning_rate=0.01, n_iters=1000):
         self.learning_rate = learning_rate
@@ -102,6 +99,8 @@ def plot_misclsfs(misclass_list, conv_epoch, dataset):
     plt.savefig(f'misclassifications_{dataset}.png', dpi=100, bbox_inches='tight')
     plt.show()
 
+x_train_A, x_test_A, y_train_A, y_test_A = split_data(datasetA, labelsA, test_size=0.3)
+x_train_B, x_test_B, y_train_B, y_test_B = split_data(datasetB, labelsB, test_size=0.3)
 
 print("\n")
 print("DATASET A (Covariance = I)")
@@ -113,7 +112,6 @@ print(f"Convergence Epoch: {conv_A if conv_A is not None else 'Did not converge 
 print(f"Validation Accuracy: {accuracy_A:.4f}")
 plot_misclsfs(misclass_A, conv_A, 'A')
 plot_db(perceptron_A, x_train_A, y_train_A, x_test_A, y_test_A, 'Dataset A (Covariance = I)', 'A')
-
 
 
 print("\n")
